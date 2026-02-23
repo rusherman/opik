@@ -162,19 +162,21 @@ public class DatasetItemResultMapper {
 
         Map<String, JsonNode> data = getData(row);
 
+        var id = row.get("id", UUID.class);
         // Check if dataset_item_id column exists in the result (only present for versioned items)
-        UUID datasetItemId = null;
+        // Fallback to the id if missing
+        UUID datasetItemId = id;
         if (rowMetadata.contains("dataset_item_id")) {
             datasetItemId = Optional.ofNullable(row.get("dataset_item_id", String.class))
                     .filter(s -> !s.isBlank())
                     .map(UUID::fromString)
-                    .orElse(null);
+                    .orElse(id);
         }
 
         var experimentItems = getExperimentItems(row.get("experiment_items_array", List[].class));
 
         return DatasetItem.builder()
-                .id(row.get("id", UUID.class))
+                .id(id)
                 .data(data)
                 .description(getDescription(row, rowMetadata))
                 .source(Optional.ofNullable(row.get("source", String.class))
