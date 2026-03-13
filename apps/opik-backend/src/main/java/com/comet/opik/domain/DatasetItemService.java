@@ -62,8 +62,6 @@ import static com.comet.opik.infrastructure.db.TransactionTemplateAsync.WRITE;
 @ImplementedBy(DatasetItemServiceImpl.class)
 public interface DatasetItemService {
 
-    Mono<Void> verifyDatasetExistsAndSave(DatasetItemBatch batch);
-
     Mono<Long> saveBatch(UUID datasetId, List<DatasetItem> items);
 
     Mono<Void> createFromTraces(UUID datasetId, Set<UUID> traceIds, TraceEnrichmentOptions enrichmentOptions);
@@ -143,7 +141,6 @@ class DatasetItemServiceImpl implements DatasetItemService {
     private final @NonNull DatasetItemVersionDAO versionDao;
     private final @NonNull DatasetService datasetService;
     private final @NonNull DatasetVersionService versionService;
-    private final @NonNull ExperimentDAO experimentDao;
     private final @NonNull TraceService traceService;
     private final @NonNull SpanService spanService;
     private final @NonNull TraceEnrichmentService traceEnrichmentService;
@@ -155,9 +152,8 @@ class DatasetItemServiceImpl implements DatasetItemService {
     private final @NonNull DatasetVersioningMigrationService migrationService;
     private final @NonNull @Config OpikConfiguration config;
 
-    @Override
     @WithSpan
-    public Mono<Void> verifyDatasetExistsAndSave(@NonNull DatasetItemBatch batch) {
+    private Mono<Void> verifyDatasetExistsAndSave(@NonNull DatasetItemBatch batch) {
         if (batch.datasetId() == null && batch.datasetName() == null) {
             return Mono.error(failWithError("dataset_id or dataset_name must be provided"));
         }
@@ -179,22 +175,19 @@ class DatasetItemServiceImpl implements DatasetItemService {
         // Verify dataset exists
         return Mono.deferContextual(ctx -> {
             String workspaceId = ctx.get(RequestContext.WORKSPACE_ID);
-            String userName = ctx.get(RequestContext.USER_NAME);
 
-            return Mono.fromCallable(() -> {
-                return template.inTransaction(READ_ONLY, handle -> {
-                    var dao = handle.attach(DatasetDAO.class);
-                    return dao.findById(datasetId, workspaceId)
-                            .orElseThrow(() -> new NotFoundException("Dataset not found: '%s'".formatted(datasetId)));
-                });
-            }).subscribeOn(Schedulers.boundedElastic());
+            return Mono.fromCallable(() -> template.inTransaction(READ_ONLY, handle -> {
+                var dao = handle.attach(DatasetDAO.class);
+                return dao.findById(datasetId, workspaceId)
+                        .orElseThrow(() -> new NotFoundException("Dataset not found: '%s'".formatted(datasetId)));
+            })).subscribeOn(Schedulers.boundedElastic());
         }).flatMap(dataset -> {
             // Enrich traces with metadata
             return traceEnrichmentService.enrichTraces(traceIds, enrichmentOptions)
                     .flatMap(enrichedTraces -> {
                         // Convert enriched traces to dataset items
                         List<DatasetItem> datasetItems = enrichedTraces.entrySet().stream()
-                                .<DatasetItem>map(entry -> DatasetItem.builder()
+                                .map(entry -> DatasetItem.builder()
                                         .id(idGenerator.generateId())
                                         .source(DatasetItemSource.TRACE)
                                         .traceId(entry.getKey())
@@ -231,22 +224,19 @@ class DatasetItemServiceImpl implements DatasetItemService {
         // Verify dataset exists
         return Mono.deferContextual(ctx -> {
             String workspaceId = ctx.get(RequestContext.WORKSPACE_ID);
-            String userName = ctx.get(RequestContext.USER_NAME);
 
-            return Mono.fromCallable(() -> {
-                return template.inTransaction(READ_ONLY, handle -> {
-                    var dao = handle.attach(DatasetDAO.class);
-                    return dao.findById(datasetId, workspaceId)
-                            .orElseThrow(() -> new NotFoundException("Dataset not found: '%s'".formatted(datasetId)));
-                });
-            }).subscribeOn(Schedulers.boundedElastic());
+            return Mono.fromCallable(() -> template.inTransaction(READ_ONLY, handle -> {
+                var dao = handle.attach(DatasetDAO.class);
+                return dao.findById(datasetId, workspaceId)
+                        .orElseThrow(() -> new NotFoundException("Dataset not found: '%s'".formatted(datasetId)));
+            })).subscribeOn(Schedulers.boundedElastic());
         }).flatMap(dataset -> {
             // Enrich spans with metadata
             return spanEnrichmentService.enrichSpans(spanIds, enrichmentOptions)
                     .flatMap(enrichedSpans -> {
                         // Convert enriched spans to dataset items
                         List<DatasetItem> datasetItems = enrichedSpans.entrySet().stream()
-                                .<DatasetItem>map(entry -> DatasetItem.builder()
+                                .map(entry -> DatasetItem.builder()
                                         .id(idGenerator.generateId())
                                         .source(DatasetItemSource.SPAN)
                                         .spanId(entry.getKey())
@@ -563,8 +553,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
                                                 updateUuids)
                                         .flatMap(updatedCount -> {
                                             if (updatedCount == 0) {
-                                                log.info("No items found to update for dataset '{}'",
-                                                        datasetId);
+                                                log.info("No items found to update for dataset '{}'", datasetId);
                                                 return Mono.empty();
                                             }
 
@@ -630,8 +619,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
                                                 updateUuids)
                                         .flatMap(updatedCount -> {
                                             if (updatedCount == 0) {
-                                                log.info("No items found to update for dataset '{}'",
-                                                        datasetId);
+                                                log.info("No items found to update for dataset '{}'", datasetId);
                                                 return Mono.empty();
                                             }
 
@@ -930,7 +918,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
                     batchGroupId, datasetId, ids != null ? ids.size() : 0, filters != null ? filters.size() : 0);
             return getDatasetIdOrResolveItemDatasetId(datasetId, ids)
                     .flatMap(resolvedDatasetId -> handleGroupedDeletion(
-                            batchGroupId, ids, resolvedDatasetId, filters, workspaceId, userName, true));
+                            batchGroupId, ids, resolvedDatasetId, filters, workspaceId, userName));
         });
     }
 
@@ -994,8 +982,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
                     // Handle in-place mutation for filter-based deletions when createVersion=false
                     if (!createVersion) {
                         log.info("Mutating latest version '{}' for dataset '{}' (createVersion=false)",
-                                latestVersion.get().id(),
-                                datasetId);
+                                latestVersion.get().id(), datasetId);
 
                         return deleteItemsFromExistingVersionByFilters(datasetId, latestVersion.get().id(), filters,
                                 workspaceId,
@@ -1068,12 +1055,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
                     log.info("Resolved dataset '{}' for deletion request with '{}' item IDs", datasetId, ids.size());
                     return deleteByDatasetItemIdsInDataset(ids, datasetId, workspaceId, userName,
                             batchGroupId, createVersion);
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("None of the '{}' items found in versioned table, treating as already deleted",
-                            ids.size());
-                    return Mono.empty();
-                }));
+                });
     }
 
     /**
@@ -1108,9 +1090,9 @@ class DatasetItemServiceImpl implements DatasetItemService {
 
                     // If createVersion=false, mutate the latest version instead of creating a new one
                     if (!createVersion) {
-                        log.info("Mutating latest version '{}' for dataset '{}' (createVersion=false)", latestVersionId,
-                                datasetId);
-                        return deleteItemsFromExistingVersion(datasetItemIds, datasetId, null, latestVersionId,
+                        log.info("Mutating latest version '{}' for dataset '{}' (createVersion=false)",
+                                latestVersionId, datasetId);
+                        return deleteItemsFromExistingVersion(datasetItemIds, datasetId, latestVersionId,
                                 workspaceId,
                                 userName);
                     }
@@ -1567,7 +1549,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
      * @param datasetId the dataset ID
      * @param versionId the version ID to insert into
      * @param workspaceId the workspace ID
-     * @param userName the user name
+     * @param userName the username
      * @return Mono emitting the updated dataset version
      */
     private Mono<DatasetVersion> insertItemsIntoVersion(DatasetItemBatch batch, UUID datasetId, UUID versionId,
@@ -1971,13 +1953,11 @@ class DatasetItemServiceImpl implements DatasetItemService {
     /**
      * Deletes items from an existing version (subsequent batches with same batch_group_id).
      * Similar to appendItemsToVersion for inserts, but removes items instead.
-     *
      * Note: Only supports deletion by explicit item IDs. Filter-based deletions cannot be batched
      * because the client doesn't know which items will be deleted.
      */
-    private Mono<Void> deleteItemsFromExistingVersion(Set<UUID> ids, UUID datasetId,
-            List<DatasetItemFilter> filters, UUID versionId,
-            String workspaceId, String userName) {
+    private Mono<Void> deleteItemsFromExistingVersion(
+            Set<UUID> ids, UUID datasetId, UUID versionId, String workspaceId, String userName) {
 
         log.info("Deleting items from existing version '{}' for dataset '{}'", versionId, datasetId);
 
@@ -2067,23 +2047,11 @@ class DatasetItemServiceImpl implements DatasetItemService {
     }
 
     /**
-     * Creates a new version with deletions for a new batch_group_id.
-     * This is the first batch of deletions for this batch_group_id.
-     */
-    /**
-     * Creates a new version with batch_group_id for delete operations by reusing existing deletion logic.
-     * This delegates to the existing createVersionWithDeletion method, then associates
-     * the batch_group_id with the created version.
-     */
-
-    /**
-     * Resolves the datasetId for a delete operation.
-     * If datasetId is provided, uses it directly.
-     * If only itemIds are provided, resolves datasetId by looking up the row IDs.
+     * Resolves the dataset ID that owns the given stable dataset item IDs.
+     * Validates that all items belong to the same dataset.
      *
-     * @param datasetId the dataset ID (may be null)
-     * @param ids the item IDs to delete (row IDs from client, may be null)
-     * @return Mono emitting the resolved datasetId
+     * @param itemIds stable dataset_item_id values
+     * @return Mono emitting the resolved datasetId, or empty if none found
      */
     private Mono<UUID> resolveDatasetIdFromItemIds(Set<UUID> itemIds) {
         return versionDao.resolveDatasetIdsFromItemIds(itemIds)
@@ -2114,49 +2082,40 @@ class DatasetItemServiceImpl implements DatasetItemService {
      * Handles grouped deletion operations using batch_group_id.
      * If a version exists for the batch_group_id, appends deletions to it.
      * Otherwise, creates a new version with the deletions.
-     *
      * Maps incoming row IDs to stable dataset_item_ids before processing.
      *
      * @param batchGroupId the batch group ID
-     * @param ids the item IDs to delete (may be UI row IDs)
-     * @param datasetId the resolved dataset ID
-     * @param filters optional filters
-     * @param workspaceId the workspace ID
-     * @param userName the user name
+     * @param ids          the item IDs to delete (maybe UI row IDs)
+     * @param datasetId    the resolved dataset ID
+     * @param filters      optional filters
+     * @param workspaceId  the workspace ID
+     * @param userName     the username
      * @return Mono completing when deletion is done
      */
     private Mono<Void> handleGroupedDeletion(UUID batchGroupId, Set<UUID> ids, UUID datasetId,
-            List<DatasetItemFilter> filters, String workspaceId, String userName, boolean createVersion) {
+            List<DatasetItemFilter> filters, String workspaceId, String userName) {
 
         // For filter-based deletions, ids is null - skip mapping and proceed directly
         if (ids == null) {
-            return proceedWithGroupedDeletion(batchGroupId, Set.of(), datasetId, filters, workspaceId, userName,
-                    createVersion);
+            return proceedWithGroupedDeletion(batchGroupId, Set.of(), datasetId, filters, workspaceId, userName);
         }
 
         if (datasetId != null) {
-            return proceedWithGroupedDeletion(batchGroupId, ids, datasetId, filters, workspaceId, userName,
-                    createVersion);
+            return proceedWithGroupedDeletion(batchGroupId, ids, datasetId, filters, workspaceId, userName);
         }
 
         return resolveDatasetIdFromItemIds(ids)
                 .flatMap(resolvedId -> {
                     log.info("Resolved dataset '{}' for batch_group_id '{}'", resolvedId, batchGroupId);
-                    return proceedWithGroupedDeletion(batchGroupId, ids, resolvedId, filters, workspaceId, userName,
-                            createVersion);
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("None of the '{}' items found for batch_group_id '{}', treating as already deleted",
-                            ids.size(), batchGroupId);
-                    return Mono.empty();
-                }));
+                    return proceedWithGroupedDeletion(batchGroupId, ids, resolvedId, filters, workspaceId, userName);
+                });
     }
 
     /**
      * Proceeds with grouped deletion after row IDs have been mapped to dataset_item_ids.
      */
     private Mono<Void> proceedWithGroupedDeletion(UUID batchGroupId, Set<UUID> datasetItemIds, UUID datasetId,
-            List<DatasetItemFilter> filters, String workspaceId, String userName, boolean createVersion) {
+            List<DatasetItemFilter> filters, String workspaceId, String userName) {
         return Mono.fromCallable(() -> versionService.findByBatchGroupId(batchGroupId, datasetId, workspaceId))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(optionalVersion -> {
@@ -2165,7 +2124,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
                         var existingVersion = optionalVersion.get();
                         log.info("Deleting '{}' items from existing version '{}' for batch_group_id '{}'",
                                 datasetItemIds.size(), existingVersion.id(), batchGroupId);
-                        return deleteItemsFromExistingVersion(datasetItemIds, datasetId, filters,
+                        return deleteItemsFromExistingVersion(datasetItemIds, datasetId,
                                 existingVersion.id(), workspaceId, userName);
                     } else {
                         // No version with this batch_group_id - create new version with deletions
@@ -2186,7 +2145,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
      * @param batch the batch of items to insert
      * @param datasetId the dataset ID
      * @param workspaceId the workspace ID
-     * @param userName the user name
+     * @param userName the username
      * @return Mono emitting the dataset version
      */
     private Mono<DatasetVersion> handleGroupedInsertion(UUID batchGroupId, DatasetItemBatch batch,

@@ -105,29 +105,6 @@ public interface DatasetItemVersionDAO {
             List<DatasetItemFilter> excludeFilters, List<UUID> uuids);
 
     /**
-     * Applies delta changes (add, edit, delete) from a base version to create a new version.
-     * <p>
-     * This operation:
-     * <ul>
-     *   <li>Copies items from baseVersion that are NOT in deletedIds and NOT in editedItems</li>
-     *   <li>Inserts editedItems (with updated data but same stable ID)</li>
-     *   <li>Inserts addedItems (with new stable IDs)</li>
-     * </ul>
-     * <p>
-     * For items passed to this method:
-     * - Use {@code datasetItemId} field as the stable ID (maintained across versions)
-     * - The {@code id} field is ignored (row IDs are generated internally)
-     *
-     * @param datasetId the dataset ID
-     * @param baseVersionId the base version to apply changes from
-     * @param newVersionId the new version ID to create
-     * @param addedItems new items to add
-     * @param editedItems existing items with updated data
-     * @param deletedIds stable item IDs to exclude from the new version
-     * @param baseVersionItemCount the item count in the base version (for UUID pool sizing)
-     * @return the total number of items in the new version
-     */
-    /**
      * Apply delta changes to create a new dataset version.
      * Added and edited items should already have their row IDs (id field) set.
      * Unchanged items will be copied with UUIDs from unchangedUuids.
@@ -176,7 +153,7 @@ public interface DatasetItemVersionDAO {
      * @param versionId the version ID to insert into
      * @param items the items to insert
      * @param workspaceId the workspace ID
-     * @param userName the user name
+     * @param userName the username
      * @return the number of items inserted
      */
     Mono<Long> insertItems(UUID datasetId, UUID versionId, List<DatasetItem> items,
@@ -211,7 +188,6 @@ public interface DatasetItemVersionDAO {
     /**
      * Resolves which dataset contains the given item by looking across all versions.
      * This is used for initial lookup when only the item ID is known.
-     *
      * Note: This method queries across versions to find which dataset contains the item.
      * It's only used for dataset resolution - actual data retrieval should use version-specific methods.
      *
@@ -241,17 +217,6 @@ public interface DatasetItemVersionDAO {
     Mono<DatasetItem> getItemByDatasetItemId(UUID datasetId, UUID versionId, UUID datasetItemId);
 
     /**
-     * Gets multiple items by their dataset_item_ids from a specific version in a single query.
-     * This is the batch version of getItemByDatasetItemId to avoid N+1 queries.
-     *
-     * @param datasetId the dataset ID
-     * @param versionId the version ID to retrieve items from
-     * @param datasetItemIds the stable item IDs (dataset_item_id values)
-     * @return Flux emitting DatasetItems for all found items
-     */
-    Flux<DatasetItem> getItemsByDatasetItemIds(UUID datasetId, UUID versionId, Set<UUID> datasetItemIds);
-
-    /**
      * Gets an item by its ID (id field).
      * This is used when the frontend sends the ID from the API response.
      *
@@ -275,12 +240,6 @@ public interface DatasetItemVersionDAO {
 
     Flux<DatasetItemPolicyEntry> getExecutionPoliciesByDatasetItemIds(Set<UUID> datasetItemIds,
             Set<UUID> datasetVersionIds);
-
-    /**
-     * Mapping from row ID to dataset_item_id.
-     */
-    record DatasetItemIdMapping(UUID rowId, UUID datasetItemId, UUID datasetId) {
-    }
 
     /**
      * Soft deletes all items from a specific dataset version.
@@ -432,7 +391,6 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
     /**
      * Counts dataset items with experiment items, applying all filters from search criteria.
      * This ensures pagination totals match the filtered results.
-     *
      * Note: Uses simplified feedback scores processing (only aggregated values, not full details)
      * since we only need values for filtering in HAVING clauses, not for display.
      * This keeps the count query closer to the legacy pattern while supporting all required filters.
@@ -1545,7 +1503,7 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
                 src.source,
                 src.trace_id,
                 src.span_id,
-                """
+            """
             + TagOperations.tagUpdateFragment("src.tags")
             + """
                         as tags,
@@ -3423,9 +3381,8 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
         return getItemsByDatasetItemIds(datasetId, versionId, Set.of(datasetItemId)).next();
     }
 
-    @Override
     @WithSpan
-    public Flux<DatasetItem> getItemsByDatasetItemIds(@NonNull UUID datasetId, @NonNull UUID versionId,
+    private Flux<DatasetItem> getItemsByDatasetItemIds(@NonNull UUID datasetId, @NonNull UUID versionId,
             @NonNull Set<UUID> datasetItemIds) {
         if (datasetItemIds.isEmpty()) {
             return Flux.empty();
@@ -3445,7 +3402,7 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
             return makeFluxContextAware(bindWorkspaceIdToFlux(statement))
                     .doFinally(signalType -> endSegment(segment))
                     .flatMap(result -> result
-                            .map((row, rowMetadata) -> mapVersionedItemToDatasetItem(row, rowMetadata)));
+                            .map(this::mapVersionedItemToDatasetItem));
         });
     }
 
@@ -3530,7 +3487,7 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
 
                 return Flux.from(statement.execute())
                         .flatMap(result -> result
-                                .map((row, rowMetadata) -> mapVersionedItemToDatasetItem(row, rowMetadata)))
+                                .map(this::mapVersionedItemToDatasetItem))
                         .next()
                         .doOnSuccess(item -> {
                             if (item != null) {

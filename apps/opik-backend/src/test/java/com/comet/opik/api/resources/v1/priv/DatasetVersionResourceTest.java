@@ -250,17 +250,13 @@ class DatasetVersionResourceTest {
         return versions.content().getFirst();
     }
 
-    private void deleteDatasetItem(UUID datasetId, UUID itemId) {
+    private void deleteDatasetItem(UUID itemId) {
         // Create a delete request with a unique batchGroupId to create a new version
         var deleteRequest = DatasetItemsDelete.builder()
                 .itemIds(Set.of(itemId))
                 .batchGroupId(UUID.randomUUID())
                 .build();
         datasetResourceClient.deleteDatasetItems(deleteRequest, TEST_WORKSPACE, API_KEY);
-    }
-
-    private void deleteDatasetItemsByFilters(UUID datasetId, List<DatasetItemFilter> filters) {
-        datasetResourceClient.deleteDatasetItemsByFilters(datasetId, filters, API_KEY, TEST_WORKSPACE);
     }
 
     @Nested
@@ -1296,7 +1292,7 @@ class DatasetVersionResourceTest {
             var itemToDelete = v1Items.getFirst();
 
             // When - Delete one item
-            deleteDatasetItem(datasetId, itemToDelete.id());
+            deleteDatasetItem(itemToDelete.id());
 
             // Then - Verify a new version was created
             var versions = datasetResourceClient.listVersions(datasetId, API_KEY, TEST_WORKSPACE);
@@ -1336,7 +1332,7 @@ class DatasetVersionResourceTest {
 
             // When - Delete all items
             for (var item : v1Items) {
-                deleteDatasetItem(datasetId, item.id());
+                deleteDatasetItem(item.id());
             }
 
             // Then - Verify latest version has 0 items
@@ -1680,7 +1676,7 @@ class DatasetVersionResourceTest {
 
             // Verify expected column names are present
             var columnNames = itemPage.columns().stream()
-                    .map(col -> col.name())
+                    .map(Column::name)
                     .toList();
             assertThat(columnNames).contains("input", "output");
         }
