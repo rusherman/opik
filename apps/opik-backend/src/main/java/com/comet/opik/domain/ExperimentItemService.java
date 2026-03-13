@@ -262,7 +262,7 @@ public class ExperimentItemService {
         // When versioning is enabled, dataset item IDs are stable dataset_item_id values from dataset_item_versions
         // When versioning is disabled, dataset item IDs are from dataset_items (legacy table)
         if (featureFlags.isDatasetVersioningEnabled()) {
-            return datasetItemVersionDAO.getDatasetItemWorkspace(datasetItemIds, workspaceId)
+            return datasetItemVersionDAO.getDatasetItemWorkspace(datasetItemIds)
                     .map(items -> items.stream()
                             .allMatch(item -> workspaceId.equals(item.workspaceId())));
         }

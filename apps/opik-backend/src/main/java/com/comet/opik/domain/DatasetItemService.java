@@ -45,9 +45,7 @@ import ru.vyarus.guicey.jdbi3.tx.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -1414,19 +1412,13 @@ class DatasetItemServiceImpl implements DatasetItemService {
             List<DatasetItem> addedItems = prepareAddedItems(changes, datasetId);
             Set<UUID> deletedRowIds = changes.deletedIds() != null ? changes.deletedIds() : Set.of();
 
-            // Collect edited item IDs (already stable dataset_item_ids)
             List<DatasetItemEdit> editedItemEdits = changes.editedItems() != null ? changes.editedItems() : List.of();
-            Set<UUID> editedRowIds = editedItemEdits.stream()
+            Set<UUID> editedDatasetItemIds = editedItemEdits.stream()
                     .map(DatasetItemEdit::id)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
-            // IDs are stable dataset_item_ids; identity mapping
-            Map<UUID, UUID> rowIdToDatasetItemId = editedRowIds.stream()
-                    .collect(Collectors.toMap(id -> id, id -> id));
-
             return Mono.defer(() -> {
-                Set<UUID> editedDatasetItemIds = new HashSet<>(editedRowIds);
 
                 // Generate UUIDs for all items in the correct order for ClickHouse's ORDER BY id DESC
                 // Since UUIDv7 is time-ordered (later = larger) and we sort DESC (largest first),
@@ -1459,7 +1451,7 @@ class DatasetItemServiceImpl implements DatasetItemService {
                 // Edit items via INSERT...SELECT (merge happens in SQL, not Java)
                 Mono<Long> editedCountMono = versionDao.editItemsViaSelectInsert(
                         datasetId, baseVersionId, newVersionId,
-                        editedItemEdits, rowIdToDatasetItemId, editedUuids);
+                        editedItemEdits, editedUuids);
 
                 // Apply delta for added items + copy unchanged (exclude edited + deleted)
                 return editedCountMono

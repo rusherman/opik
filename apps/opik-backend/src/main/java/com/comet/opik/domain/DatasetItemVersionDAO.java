@@ -146,7 +146,7 @@ public interface DatasetItemVersionDAO {
             List<UUID> unchangedUuids, Set<UUID> additionalExcludeIds);
 
     Mono<Long> editItemsViaSelectInsert(UUID datasetId, UUID baseVersionId, UUID newVersionId,
-            List<DatasetItemEdit> editedItems, Map<UUID, UUID> rowIdToDatasetItemId, List<UUID> newRowIds);
+            List<DatasetItemEdit> editedItems, List<UUID> newRowIds);
 
     /**
      * Applies batch updates to items from a base version, creating updated copies in a new version.
@@ -263,12 +263,12 @@ public interface DatasetItemVersionDAO {
     /**
      * Gets workspace IDs for stable dataset item IDs (dataset_item_id field from dataset_item_versions).
      * Used for validating that dataset items belong to the correct workspace.
+     * Intentionally unscoped by workspace so cross-workspace items return their true workspace_id.
      *
-     * @param datasetItemRowIds the stable dataset_item_id values
-     * @param workspaceId the workspace ID to scope the lookup
+     * @param datasetItemIds the stable dataset_item_id values
      * @return Mono emitting a list of workspace and resource ID pairs
      */
-    Mono<List<WorkspaceAndResourceId>> getDatasetItemWorkspace(Set<UUID> datasetItemRowIds, String workspaceId);
+    Mono<List<WorkspaceAndResourceId>> getDatasetItemWorkspace(Set<UUID> datasetItemIds);
 
     record DatasetItemPolicyEntry(UUID datasetVersionId, UUID datasetItemId, ExecutionPolicy policy) {
     }
@@ -2847,7 +2847,7 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
     @WithSpan
     public Mono<Long> editItemsViaSelectInsert(@NonNull UUID datasetId, @NonNull UUID baseVersionId,
             @NonNull UUID newVersionId, @NonNull List<DatasetItemEdit> editedItems,
-            @NonNull Map<UUID, UUID> rowIdToDatasetItemId, @NonNull List<UUID> newRowIds) {
+            @NonNull List<UUID> newRowIds) {
 
         if (editedItems.isEmpty()) {
             return Mono.just(0L);
@@ -2866,7 +2866,6 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
 
                 for (int i = 0; i < editedItems.size(); i++) {
                     DatasetItemEdit edit = editedItems.get(i);
-                    UUID datasetItemId = rowIdToDatasetItemId.get(edit.id());
                     UUID newRowId = newRowIds.get(i);
 
                     ST template = new ST(EDIT_ITEM_VIA_SELECT_INSERT);
@@ -2893,7 +2892,7 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
                             .bind("datasetId", datasetId.toString())
                             .bind("baseVersionId", baseVersionId.toString())
                             .bind("newVersionId", newVersionId.toString())
-                            .bind("datasetItemId", datasetItemId.toString())
+                            .bind("datasetItemId", edit.id().toString())
                             .bind("newId", newRowId.toString())
                             .bind("userName", userName);
 
@@ -3547,8 +3546,7 @@ class DatasetItemVersionDAOImpl implements DatasetItemVersionDAO {
 
     @Override
     @WithSpan
-    public Mono<List<WorkspaceAndResourceId>> getDatasetItemWorkspace(@NonNull Set<UUID> datasetItemRowIds,
-            @NonNull String workspaceId) {
+    public Mono<List<WorkspaceAndResourceId>> getDatasetItemWorkspace(@NonNull Set<UUID> datasetItemRowIds) {
         if (datasetItemRowIds.isEmpty()) {
             return Mono.just(List.of());
         }
