@@ -1168,7 +1168,7 @@ class ExperimentAggregatesDAOImpl implements ExperimentAggregatesDAO {
             SELECT COUNT(DISTINCT eia.dataset_item_id) as count
             FROM experiment_item_aggregates eia FINAL
             INNER JOIN experiment_aggregates ea FINAL ON ea.id = eia.experiment_id
-            LEFT JOIN dataset_item_versions_resolved AS di ON di.id = eia.dataset_item_id
+            LEFT JOIN dataset_item_versions_resolved AS di ON (di.id = eia.dataset_item_id OR di.dataset_item_id = eia.dataset_item_id)
             WHERE eia.workspace_id = :workspace_id
             <if(experiment_ids)>AND eia.experiment_id IN :experiment_ids<endif>
             <if(has_target_projects)>AND eia.project_id IN :target_project_ids<endif>
@@ -1271,7 +1271,7 @@ class ExperimentAggregatesDAOImpl implements ExperimentAggregatesDAO {
                 )) AS experiment_items_array
             FROM experiment_item_aggregates eia FINAL
             INNER JOIN experiment_aggregates ea FINAL ON ea.id = eia.experiment_id
-            LEFT JOIN dataset_item_versions_resolved AS di ON di.id = eia.dataset_item_id
+            LEFT JOIN dataset_item_versions_resolved AS di ON (di.id = eia.dataset_item_id OR di.dataset_item_id = eia.dataset_item_id)
             WHERE eia.workspace_id = :workspace_id
             <if(experiment_ids)>AND eia.experiment_id IN :experiment_ids<endif>
             <if(has_target_projects)>AND eia.project_id IN :target_project_ids<endif>
@@ -1300,7 +1300,7 @@ class ExperimentAggregatesDAOImpl implements ExperimentAggregatesDAO {
 
     private static final String SELECT_EXPERIMENT_ITEMS_STATS_FROM_AGGREGATES = """
             WITH valid_dataset_items AS (
-                SELECT id
+                SELECT id, dataset_item_id
                 FROM dataset_item_versions FINAL
                 WHERE workspace_id = :workspace_id
                 AND dataset_id = :dataset_id
@@ -1318,7 +1318,7 @@ class ExperimentAggregatesDAOImpl implements ExperimentAggregatesDAO {
                 FROM experiment_item_aggregates FINAL
                 WHERE workspace_id = :workspace_id
                 AND experiment_id IN :experiment_ids
-                AND dataset_item_id IN (SELECT id FROM valid_dataset_items)
+                AND (dataset_item_id IN (SELECT id FROM valid_dataset_items) OR dataset_item_id IN (SELECT dataset_item_id FROM valid_dataset_items))
                 <if(experiment_item_filters)>
                 AND (<experiment_item_filters>)
                 <endif>
@@ -1343,7 +1343,7 @@ class ExperimentAggregatesDAOImpl implements ExperimentAggregatesDAO {
                 FROM experiment_item_aggregates FINAL
                 WHERE workspace_id = :workspace_id
                 AND experiment_id IN :experiment_ids
-                AND dataset_item_id IN (SELECT id FROM valid_dataset_items)
+                AND (dataset_item_id IN (SELECT id FROM valid_dataset_items) OR dataset_item_id IN (SELECT dataset_item_id FROM valid_dataset_items))
                 <if(experiment_item_filters)>
                 AND (<experiment_item_filters>)
                 <endif>
@@ -1400,7 +1400,7 @@ class ExperimentAggregatesDAOImpl implements ExperimentAggregatesDAO {
             FROM experiment_item_aggregates FINAL
             WHERE workspace_id = :workspace_id
             AND experiment_id IN :experiment_ids
-            AND dataset_item_id IN (SELECT id FROM valid_dataset_items)
+            AND (dataset_item_id IN (SELECT id FROM valid_dataset_items) OR dataset_item_id IN (SELECT dataset_item_id FROM valid_dataset_items))
             <if(experiment_item_filters)>
             AND (<experiment_item_filters>)
             <endif>
