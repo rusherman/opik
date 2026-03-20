@@ -234,7 +234,7 @@ const PlaygroundPrompt = ({
           configs: getDefaultConfigByProvider(newProvider, newModel),
         });
 
-        updateOutput(promptId, "", { value: "" });
+        updateOutput(promptId, "", { value: null });
       }
     }
   }, [
