@@ -642,7 +642,7 @@ class TraceDAOImpl implements TraceDAO {
             ), experiments_agg AS (
                 SELECT DISTINCT
                     ei.trace_id,
-                    COALESCE(div.dataset_item_id, ei.dataset_item_id) AS experiment_dataset_item_id,
+                    if(div.id != '', div.dataset_item_id, ei.dataset_item_id) AS experiment_dataset_item_id,
                     e.id AS experiment_id,
                     e.name AS experiment_name,
                     e.dataset_id AS experiment_dataset_id
@@ -1178,7 +1178,7 @@ class TraceDAOImpl implements TraceDAO {
             , experiments_agg AS (
                 SELECT DISTINCT
                     ei.trace_id,
-                    COALESCE(div.dataset_item_id, ei.dataset_item_id) AS experiment_dataset_item_id,
+                    if(div.id != '', div.dataset_item_id, ei.dataset_item_id) AS experiment_dataset_item_id,
                     e.id AS experiment_id,
                     e.name AS experiment_name,
                     e.dataset_id AS experiment_dataset_id
