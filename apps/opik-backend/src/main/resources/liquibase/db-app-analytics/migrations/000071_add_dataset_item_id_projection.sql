@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset andrescrz:000066_add_dataset_item_id_projection
+--changeset andrescrz:000071_add_dataset_item_id_projection
 --comment: Add projection sorted by dataset_item_id for primary-key-level performance on stable-ID queries (OPIK-4518)
 
 ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.dataset_item_versions ON CLUSTER '{cluster}'

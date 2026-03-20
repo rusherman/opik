@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset andrescrz:000065_add_dataset_item_id_skip_indexes
+--changeset andrescrz:000070_add_dataset_item_id_skip_indexes
 --comment: Add skip indexes on dataset_item_id for dataset_item_versions to speed up lookups, cursor pagination, and deduplication (OPIK-4518)
 
 ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.dataset_item_versions ON CLUSTER '{cluster}'
