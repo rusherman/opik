@@ -1,0 +1,4 @@
+variables:
+  PROJECT_NAME: opik
+  BRANCH: main|release\/.*
+  OPIK_VERSION: "1.10.45"
