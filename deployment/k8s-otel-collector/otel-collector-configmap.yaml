@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: opik
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+
+    exporters:
+      debug:
+        verbosity: detailed
+
+      alibabacloud_logservice/sls-trace:
+        endpoint: "${SLS_ENDPOINT}"
+        project: "${SLS_PROJECT}"
+        logstore: "${SLS_LOGSTORE_TRACES}"
+        access_key_id: "${SLS_ACCESS_KEY_ID}"
+        access_key_secret: "${SLS_ACCESS_KEY_SECRET}"
+
+      alibabacloud_logservice/sls-metric:
+        endpoint: "${SLS_ENDPOINT}"
+        project: "${SLS_PROJECT}"
+        logstore: "${SLS_LOGSTORE_METRICS}"
+        access_key_id: "${SLS_ACCESS_KEY_ID}"
+        access_key_secret: "${SLS_ACCESS_KEY_SECRET}"
+
+      alibabacloud_logservice/sls-log:
+        endpoint: "${SLS_ENDPOINT}"
+        project: "${SLS_PROJECT}"
+        logstore: "${SLS_LOGSTORE_LOGS}"
+        access_key_id: "${SLS_ACCESS_KEY_ID}"
+        access_key_secret: "${SLS_ACCESS_KEY_SECRET}"
+
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 1024
+
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [alibabacloud_logservice/sls-trace]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [alibabacloud_logservice/sls-metric]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [alibabacloud_logservice/sls-log]
