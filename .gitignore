@@ -8,6 +8,11 @@
 .env.local
 .env
 
+# Kubernetes secrets
+**/otel-sls-secret.yaml
+**/secret*.yaml
+!**/*secret*.yaml.example
+
 # IntelliJ
 .idea/
 *.iml
