@@ -228,9 +228,9 @@ OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
 
 ### 环境变量
 
-| 环境变量 | 当前值 | 说明 |
+| 环境变量 | 推荐值 | 说明 |
 |---------|--------|------|
-| `OTEL_TRACE` | `off` | **当前未开启**，设为 `on` 启用 |
+| `OTEL_TRACE` | `on` | **必须设为 `on`**，见下方重要说明 |
 | `OTEL_COLLECTOR_HOST` | `otel-collector` | Collector 地址 |
 | `OTEL_COLLECTOR_PORT` | `4317` | 使用 gRPC 端口 |
 
@@ -244,9 +244,23 @@ OTEL_TRACE: "on"
 
 开启后 Nginx 通过 `ngx_otel_module.so` 模块：
 - 自动为每个请求生成 trace
-- 传播 W3C Trace Context（`otel_trace_context propagate`）
+- 传播 W3C Trace Context（`otel_trace_context propagate`），trace-flags=01（sampled）
 - 在 access log 中注入 `$otel_trace_id`
 - 服务名为 `opik-frontend`
+
+### 关键注意事项
+
+> **`OTEL_TRACE` 必须设为 `on`，否则 Backend 的 HTTP 请求 trace 会丢失**
+>
+> Nginx 的 `ngx_otel_module` 配置中同时包含 `otel_trace` 和 `otel_trace_context propagate`。
+> 当 `otel_trace off` 时，Nginx 仍然会通过 `otel_trace_context propagate` 向 Backend 发送
+> `traceparent` header，但其中 **trace-flags=00（not sampled）**。
+>
+> OTel Java Agent 遵守 W3C Trace Context 规范，收到 `trace-flags=00` 后会认为上游已决定不采样，
+> 从而 **跳过所有 span 的生成**。这会导致所有通过 Nginx 反向代理的 HTTP 请求在 Backend 中没有任何 trace 数据，
+> 而直接访问 Backend 的请求（如 healthcheck、定时任务、直接 curl）则正常。
+>
+> 症状：SLS 中只能看到 Quartz 定时任务、Redis、ClickHouse 的 span，看不到 HTTP SERVER span。
 
 ## 6. 排查指南
 
@@ -304,4 +318,6 @@ kubectl set env deployment/backend -n opik OTEL_JAVAAGENT_DEBUG=false
 | Agent JAR 下载超时 | GitHub 不可达 | 设置 `OTEL_JAVAAGENT_DOWNLOAD_URL` 为 Maven Central |
 | Collector 启动失败 | SLS 凭证错误 | 检查 Secret `otel-sls-credentials` |
 | 只有 metrics 无 traces | 协议不匹配（gRPC 发到 HTTP 端口） | 确认 protocol 与端口匹配 |
+| 前端页面操作无 trace，直接 curl 有 | Nginx `OTEL_TRACE=off` 导致 `traceparent` 中 trace-flags=00 | **设 `OTEL_TRACE=on`**（见第 5 节） |
+| 只有 Quartz/Redis/DB span，无 HTTP SERVER span | 同上，Nginx 传播了 not-sampled 的 trace context | **设 `OTEL_TRACE=on`**（见第 5 节） |
 | 前端请求无 trace | `OTEL_TRACE=off` | 设为 `on` |
