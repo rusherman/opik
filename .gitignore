@@ -21,6 +21,9 @@ target/
 # BE related
 /apps/opik-backend/redoc/openapi.yaml
 
+# Liquibase seed scripts (local ops only)
+/seed_databasechangelog*.sql
+
 # Python BE related
 /apps/opik-python-backend/images/
 
