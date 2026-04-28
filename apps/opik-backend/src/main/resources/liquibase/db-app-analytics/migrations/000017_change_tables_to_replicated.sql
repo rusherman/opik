@@ -260,7 +260,7 @@ DROP TABLE ${ANALYTICS_DB_DATABASE_NAME}.attachments SYNC SETTINGS max_table_siz
 RENAME TABLE ${ANALYTICS_DB_DATABASE_NAME}.attachments1 TO ${ANALYTICS_DB_DATABASE_NAME}.attachments;
 --rollback RENAME TABLE ${ANALYTICS_DB_DATABASE_NAME}.attachments TO ${ANALYTICS_DB_DATABASE_NAME}.attachments1;
 
---changeset liyaka:change-tables-to-replicated-19 id:migrate-databasechangelog validCheckSum:ANY
+--changeset liyaka:change-tables-to-replicated-19 validCheckSum:ANY
 CREATE TABLE IF NOT EXISTS ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG1
 (
     `ID` String,
@@ -283,14 +283,14 @@ ORDER BY ID
 SETTINGS index_granularity = 8192
 --rollback DROP TABLE IF EXISTS ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG1;
 
---changeset liyaka:change-tables-to-replicated-20 id:migrate-databasechangelog validCheckSum:ANY
+--changeset liyaka:change-tables-to-replicated-20 validCheckSum:ANY
 ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG1 ATTACH PARTITION tuple() FROM ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG;
 ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG DETACH PARTITION tuple() SETTINGS max_partition_size_to_drop = 0;
 DROP TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG SYNC SETTINGS max_table_size_to_drop = 0;
 RENAME TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG1 TO ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG;
 --rollback RENAME TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG TO ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOG1;
 
---changeset liyaka:change-tables-to-replicated-21 id:migrate-databasechangeloglock validCheckSum:ANY
+--changeset liyaka:change-tables-to-replicated-21 validCheckSum:ANY
 CREATE TABLE IF NOT EXISTS ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOGLOCK1
 (
     `ID` Int64,
@@ -303,7 +303,7 @@ ORDER BY ID
 SETTINGS index_granularity = 8192
 --rollback DROP TABLE IF EXISTS ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOGLOCK1;
 
---changeset liyaka:change-tables-to-replicated-22 id:migrate-databasechangeloglock validCheckSum:ANY
+--changeset liyaka:change-tables-to-replicated-22 validCheckSum:ANY
 ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOGLOCK1 ATTACH PARTITION tuple() FROM ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOGLOCK;
 ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOGLOCK DETACH PARTITION tuple() SETTINGS max_partition_size_to_drop = 0;
 DROP TABLE ${ANALYTICS_DB_DATABASE_NAME}.DATABASECHANGELOGLOCK SYNC SETTINGS max_table_size_to_drop = 0;
