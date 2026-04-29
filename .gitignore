@@ -143,3 +143,6 @@ opik-migrate-*.json
 
 # private opik plugin
 apps/opik-frontend/src/plugins/ai-spend
+
+# Sisyphus
+.sisyphus/
