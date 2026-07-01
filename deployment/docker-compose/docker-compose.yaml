@@ -166,6 +166,7 @@ services:
       ANALYTICS_DB_HOST: "clickhouse"
       ANALYTICS_DB_PORT: 8123
       ANALYTICS_DB_DATABASE_NAME: opik
+      ANALYTICS_DB_CLUSTER_NAME: cluster
       ANALYTICS_DB_USERNAME: opik
       ANALYTICS_DB_PASS: opik
       # Agent Insights read-only freeform SQL (default off). When true, the backend provisions the restricted

@@ -1,5 +1,5 @@
 --liquibase formatted sql
---changeset DanielArian:000059_add_feishu_alert_type
+--changeset DanielArian:000087_add_feishu_alert_type
 --comment: Add 'feishu' to the alert_type ENUM column
 
 ALTER TABLE alerts

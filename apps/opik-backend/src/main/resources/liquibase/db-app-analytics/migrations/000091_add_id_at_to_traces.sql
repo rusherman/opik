@@ -6,7 +6,7 @@
 -- and need no change at cutover. UTC matches the table's other temporal columns and keeps
 -- week boundaries independent of the server timezone.
 -- DateTime (seconds) is enough: discards sub-second, and it halves the column vs DateTime64.
-ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.traces ON CLUSTER '{cluster}'
+ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.traces ON CLUSTER '${ANALYTICS_DB_CLUSTER_NAME}'
     ADD COLUMN IF NOT EXISTS id_at DateTime('UTC') MATERIALIZED UUIDv7ToDateTime(toUUID(id));
 
---rollback ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.traces ON CLUSTER '{cluster}' DROP COLUMN IF EXISTS id_at;
+--rollback ALTER TABLE ${ANALYTICS_DB_DATABASE_NAME}.traces ON CLUSTER '${ANALYTICS_DB_CLUSTER_NAME}' DROP COLUMN IF EXISTS id_at;
