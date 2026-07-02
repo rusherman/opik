@@ -200,8 +200,8 @@ jobs:
       image: "opik-frontend"
       version: ${{needs.set-version.outputs.version}}
       build_from: ${{needs.set-version.outputs.build_from}}
-      build_comet_image: ${{ !inputs.is_adhoc }}
-      comet_build_args: ${{ !inputs.is_adhoc && 'BUILD_MODE=comet' || '' }}
+      build_comet_image: false
+      comet_build_args: ""
       is_release: ${{ inputs.is_release || false }}
       is_adhoc: ${{ inputs.is_adhoc || false }}
       build_arm64: ${{ github.event_name == 'push' || inputs.build_arm64 }}
