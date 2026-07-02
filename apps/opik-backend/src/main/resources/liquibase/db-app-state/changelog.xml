@@ -10,4 +10,9 @@
 
 <includeAll relativeToChangelogFile="true" path="migrations/" endsWithFilter=".sql"  />
 
+<!-- CUSTOM: internal customizations (e.g. Feishu alert type) kept in a separate
+     numbering space so they never collide with upstream migration prefixes on upgrade.
+     Runs after all upstream migrations/. See UPGRADE.md. -->
+<includeAll relativeToChangelogFile="true" path="migrations-custom/" endsWithFilter=".sql"  />
+
 </databaseChangeLog>
