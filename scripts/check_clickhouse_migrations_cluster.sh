@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Script to check ClickHouse migrations for proper ON CLUSTER clause usage
-# This script validates that all DDL operations in ClickHouse migrations include the ON CLUSTER '{cluster}' clause
+# This script validates that all DDL operations in ClickHouse migrations include an ON CLUSTER
+# clause -- either the upstream '{cluster}' server-macro or our parameterized '${ANALYTICS_DB_CLUSTER_NAME}'
+# (used for managed ClickHouse such as Alibaba Cloud, which has no 'cluster' macro).
 # Reference: https://clickhouse.com/docs/sql-reference/distributed-ddl
 #
 # Usage:
@@ -25,8 +27,8 @@ EXIT_CODE=0
 DDL_COMMANDS_REGEX="(CREATE|DROP|ALTER|RENAME)"
 # Combined pattern for detecting DDL statements that need ON CLUSTER
 DDL_DETECTION_REGEX="^\s*${DDL_COMMANDS_REGEX}\s+"
-# Exact pattern for ON CLUSTER clause validation (project-specific)
-ON_CLUSTER_REGEX="ON\s+CLUSTER\s+['\"]\\{cluster\\}['\"]"
+# Accept both the upstream '{cluster}' server-macro and our Liquibase param '${ANALYTICS_DB_CLUSTER_NAME}'
+ON_CLUSTER_REGEX="ON\s+CLUSTER\s+['\"](\\{cluster\\}|\\\$\\{ANALYTICS_DB_CLUSTER_NAME\\})['\"]"
 # Pattern for detecting rollback comments in migration files
 ROLLBACK_COMMENT_REGEX="^[[:space:]]*--[[:space:]]*rollback[[:space:]]+"
 # Pattern for extracting DDL from rollback comments (for sed substitution)
